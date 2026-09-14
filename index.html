@@ -1,0 +1,130 @@
+from pathlib import Path
+
+html = r'''<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FBI Intelligence Academy</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#050b12;color:#eaf2f7;font-family:Inter,Arial,sans-serif}
+body:before{content:"";position:fixed;inset:0;background:linear-gradient(135deg,#081a2b,#03070c 55%,#10243a);z-index:-1}
+.app{max-width:1100px;margin:25px auto;padding:0 16px}
+.top{display:flex;align-items:center;gap:16px;background:#07131f;border:1px solid #29465f;padding:18px 22px;border-radius:18px 18px 0 0}
+.seal{width:70px;height:70px;border:3px solid #d8e5ed;border-radius:50%;display:grid;place-items:center;font-weight:900;letter-spacing:2px;box-shadow:0 0 0 3px #173b59, inset 0 0 0 2px #173b59}
+h1{font-size:23px;margin:0;letter-spacing:2px}.muted{color:#87a1b4;font-size:12px;margin-top:5px}.rank{margin-left:auto;text-align:right}.rank b{display:block;color:#77d7ff;font-size:15px}
+.main{background:#091522;border:1px solid #29465f;border-top:0;border-radius:0 0 18px 18px;padding:28px;min-height:650px}
+.hud{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:22px}
+.box{background:#0d1c2b;border:1px solid #233f56;border-radius:10px;padding:12px}.box span{display:block;color:#7893a7;font-size:10px;text-transform:uppercase}.box b{font-size:18px}
+.progress{height:8px;background:#142738;border-radius:20px;overflow:hidden;margin:12px 0 28px}.bar{height:100%;width:0;background:#5ca8d9;transition:.4s}
+.scene{display:none}.scene.active{display:block}
+.badge{display:inline-block;color:#7ec5ed;font-size:11px;font-weight:bold;letter-spacing:1.5px;margin-bottom:10px}
+h2{font-size:26px;margin:5px 0 10px}.story{color:#a9bac7;line-height:1.7;background:#0b1926;border-left:3px solid #4e91bd;padding:17px;margin:18px 0}
+.q{font-size:18px;line-height:1.5;margin:18px 0}
+.choice{width:100%;padding:15px;margin:8px 0;text-align:left;border:1px solid #2a465b;background:#0c1b29;color:#edf5f8;border-radius:9px;cursor:pointer;transition:.15s}
+.choice:hover{background:#13283a;border-color:#609bc1}.choice.correct{background:#103526;border-color:#55d98b}.choice.wrong{background:#39191c;border-color:#ef7777}
+.choice:disabled{cursor:default}
+.bottom{display:flex;justify-content:space-between;align-items:center;margin-top:20px}.next{display:none;border:0;border-radius:8px;padding:12px 20px;font-weight:bold;cursor:pointer}
+.log{margin-top:25px;background:#050c13;border:1px solid #1d3446;border-radius:9px;padding:12px;font:12px Consolas,monospace;color:#7fa7bf;height:110px;overflow:auto}
+.result{text-align:center;display:none;padding:45px 10px}.score{font-size:70px;font-weight:900;color:#75c9ef}.rankbig{font-size:22px;margin:10px}
+button.restart{padding:13px 25px;border:0;border-radius:8px;font-weight:bold;cursor:pointer}
+@media(max-width:700px){.hud{grid-template-columns:1fr 1fr}.rank{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top">
+<div class="seal">FBI</div>
+<div><h1>FEDERAL BUREAU OF INVESTIGATION</h1><div class="muted">INTELLIGENCE ACADEMY • CANDIDATE SIMULATION</div></div>
+<div class="rank">RANK<b id="rank">TRAINEE</b></div>
+</header>
+<main class="main">
+<div id="game">
+<div class="hud">
+<div class="box"><span>Görev</span><b id="mission">01 / 12</b></div>
+<div class="box"><span>Puan</span><b id="points">0</b></div>
+<div class="box"><span>Süre</span><b id="timer">60</b>s</div>
+</div>
+<div class="progress"><div class="bar" id="bar"></div></div>
+
+<section class="scene active" id="scene">
+<div class="badge" id="type">INTELLIGENCE BASICS</div>
+<h2 id="title"></h2>
+<div class="story" id="story"></div>
+<div class="q" id="question"></div>
+<div id="choices"></div>
+<div class="bottom"><span class="muted" id="feedback">Kararını dikkatlice ver.</span><button class="next" id="next">DOSYAYA DEVAM ET →</button></div>
+</section>
+
+<div class="log" id="log">[SYSTEM] Candidate terminal initialized...<br>[SYSTEM] Intelligence simulation loaded.<br></div>
+</div>
+
+<div class="result" id="result">
+<div class="badge">CASE FILE CLOSED</div>
+<h2>Mülakat Tamamlandı</h2>
+<div class="score" id="finalScore"></div>
+<div class="rankbig" id="finalRank"></div>
+<p class="muted" id="finalText"></p>
+<button class="restart" onclick="location.reload()">YENİ GÖREV BAŞLAT</button>
+</div>
+</main>
+</div>
+
+<script>
+const data=[
+{type:"FBI BASICS",title:"Kurum Dosyası",story:"Mülakatın ilk aşamasındasın. Komisyon senden FBI hakkında temel bir bilgi istiyor.",q:"FBI'ın açılımı nedir?",a:["Federal Bureau of Investigation","Federal Border Investigation","Federal Intelligence Bureau","Foreign Bureau of Investigation"],c:0},
+{type:"INTELLIGENCE",title:"Doğrulanmamış Bilgi",story:"Bir kaynak, şehirde önemli bir toplantı yapılacağını söylüyor. Kaynak daha önce doğru bilgiler vermiş ancak bu iddiasını destekleyen kanıt henüz yok.",q:"Bu bilgiyi nasıl değerlendirirsin?",a:["Kesin gerçek kabul ederim","Doğrulanmamış istihbarat olarak ele alıp doğrulamaya çalışırım","Kaynağı hemen reddederim","Sosyal medyada paylaşırım"],c:1},
+{type:"INTELLIGENCE",title:"İki Kaynak",story:"İki kaynak aynı olay hakkında farklı bilgiler veriyor. Biri çok hızlı ama geçmişte hatalar yapmış, diğeri daha yavaş fakat güvenilir.",q:"En doğru yaklaşım hangisi?",a:["Hızlı olanı kesin doğru kabul etmek","Yavaş olanı sorgulamadan kabul etmek","İki kaynağın güvenilirliğini ve kanıtlarını karşılaştırmak","İkisini de yok saymak"],c:2},
+{type:"SECURITY",title:"Gizlilik",story:"Bir arkadaşın sana gizli bir soruşturma hakkında soru soruyor. Arkadaşın yetkili değil.",q:"Ne yaparsın?",a:["Biraz bilgi veririm","Sadece ismini söylerim","Bilgiyi paylaşmam","Şaka olarak uydurma bilgi veririm"],c:2},
+{type:"ANALYSIS",title:"Şüpheli Davranış",story:"Bir kişi aynı binayı birkaç kez ziyaret ediyor ve farklı insanlarla görüşüyor. Henüz başka kanıt yok.",q:"Bu durum hakkında hangi sonuç doğrudur?",a:["Kesinlikle suçludur","Kesinlikle masumdur","Araştırılması gereken bir durumdur, tek başına suç kanıtı değildir","Hemen tutuklanmalıdır"],c:2},
+{type:"REPORTING",title:"Rapor Hatası",story:"Amirine gönderdiğin raporda bir bilginin yanlış olduğunu fark ettin. Hatanın önemli bir kararı etkileyebileceğini düşünüyorsun.",q:"Ne yaparsın?",a:["Kimse fark etmezse bırakırım","Raporu silerim","Hemen hatayı bildirip düzeltilmiş bilgiyi iletirim","Başka birini suçlarım"],c:2},
+{type:"PRIORITY",title:"Öncelik",story:"Aynı anda üç ihbar geliyor: küçük bir hırsızlık, şüpheli bir faaliyet ve kamu güvenliğini etkileyebilecek acil bir tehdit.",q:"Önceliği neye göre belirlersin?",a:["En kolay olana","En çok dikkat çekene","Acil risk ve kamu güvenliği üzerindeki etkiye","İlk gelen ihbara her zaman"],c:2},
+{type:"ANALYSIS",title:"Çelişen Delil",story:"Dosyadaki 8 bilgi aynı yönde, 2 bilgi ise bunlarla çelişiyor. Ekipteki biri iki bilgiyi çöpe atmayı öneriyor.",q:"Sen ne yaparsın?",a:["Çelişen bilgileri yok sayarım","Çelişkinin nedenini araştırırım","Çoğunluk ne diyorsa onu kabul ederim","Dosyayı kapatırım"],c:1},
+{type:"CASE GAME",title:"Gece Toplantısı",story:"Bir otelde bilgi sızıntısı araştırılıyor. Ali, 'Mehmet odaya benden önce geldi' diyor. Mehmet, 'Ali benden sonra geldi' diyor. Kamera, 21.00-21.15 arasında odada yalnızca Ali ve Mehmet'i gösteriyor. Can ise 'Odaya hiç girmedim' diyor. Yalnızca bir kişinin yalan söylediği biliniyor.",q:"Hangi ifade en güçlü şekilde şüphe oluşturuyor?",a:["Ali'nin ifadesi","Mehmet'in ifadesi","Can'ın ifadesi","Kamera kaydı"],c:2},
+{type:"CASE GAME",title:"Üçüncü Kişi",story:"Bir binanın dış kameralarında iki kişi giriş yapıyor. İçerideki toplantı odasının kamerası kısa süre sonra üç kişinin toplantıda olduğunu gösteriyor. Binanın bütün bilinen girişleri kamerada. Kaynak ise daha önce güvenilir bilgiler vermiş.",q:"Ajanın ilk yaklaşımı ne olmalı?",a:["Kaynağın kesin yalan söylediğini kabul etmek","Üçüncü kişinin nasıl içeride göründüğünü açıklayabilecek tüm olasılıkları araştırmak","Kameranın kesin bozuk olduğunu varsaymak","Toplantının sahte olduğuna karar vermek"],c:1},
+{type:"CASE GAME",title:"Sessiz Mesaj",story:"Bir ajan bir dosyada şu notu buluyor: 'Cuma değil, Cumartesi.' Aynı dosyada toplantı tarihleriyle ilgili eski notlar var. Tek başına notun anlamı belirsiz.",q:"En profesyonel yaklaşım hangisi?",a:["Bunun kesin bir tehdit olduğunu söylemek","Notu hemen çöpe atmak","Önceki kayıtlarla karşılaştırıp bağlamını araştırmak","Notu sosyal medyada paylaşmak"],c:2},
+{type:"FINAL TEST",title:"Son Karar",story:"Bir aday olarak elinde üç bilgi var: güvenilir kaynaktan gelen ama eski bir rapor, yeni fakat doğrulanmamış bir ihbar ve kamera görüntüsüyle kısmen desteklenen üçüncü bir bilgi.",q:"En iyi istihbarat yaklaşımı nedir?",a:["En yeni bilgiyi seçmek","En uzun raporu seçmek","Bilgileri güvenilirlik, güncellik ve kanıt düzeyine göre birlikte değerlendirmek","Birini rastgele seçmek"],c:2}
+];
+
+let i=0,score=0,answered=false,time=60,interval;
+const $=id=>document.getElementById(id);
+function log(t){$("log").innerHTML+="<br>"+t;$("log").scrollTop=$("log").scrollHeight}
+function rank(){
+ if(score>=11)return"FIELD ANALYST"; if(score>=9)return"INTELLIGENCE OFFICER"; if(score>=7)return"SPECIAL AGENT"; if(score>=5)return"TRAINEE"; return"CADET";
+}
+function render(){
+ clearInterval(interval);time=60;answered=false;
+ $("timer").textContent=time;
+ interval=setInterval(()=>{time--; $("timer").textContent=time;if(time<=0){clearInterval(interval);autoWrong()}},1000);
+ const d=data[i];$("mission").textContent=`${String(i+1).padStart(2,"0")} / ${data.length}`;
+ $("points").textContent=score;$("rank").textContent=rank();
+ $("bar").style.width=(i/data.length*100)+"%";
+ $("type").textContent=d.type;$("title").textContent=d.title;$("story").textContent=d.story;$("question").textContent=d.q;
+ $("feedback").textContent="Kararını dikkatlice ver.";$("next").style.display="none";$("choices").innerHTML="";
+ d.a.forEach((x,n)=>{let b=document.createElement("button");b.className="choice";b.textContent=x;b.onclick=()=>answer(n,b);$("choices").appendChild(b)});
+ log(`[CASE ${String(i+1).padStart(2,"0")}] ${d.title} opened.`);
+}
+function autoWrong(){if(!answered)answer(-1,null)}
+function answer(n,btn){
+ if(answered)return;answered=true;clearInterval(interval);
+ const d=data[i];
+ document.querySelectorAll(".choice").forEach((b,k)=>{b.disabled=true;if(k===d.c)b.classList.add("correct")});
+ if(n===d.c){score++;$("feedback").textContent="✓ Doğru karar. İstihbarat değerlendirmesi olumlu.";$("points").textContent=score;log("[RESULT] Correct assessment.");}
+ else {if(btn)btn.classList.add("wrong");$("feedback").textContent="✕ Yanlış değerlendirme. Doğru seçenek işaretlendi.";log("[RESULT] Assessment incorrect.");}
+ $("rank").textContent=rank();$("next").style.display="block";
+}
+$("next").onclick=()=>{i++;if(i<data.length)render();else finish()};
+function finish(){
+ $("game").style.display="none";$("result").style.display="block";
+ $("finalScore").textContent=score+" / "+data.length;
+ $("finalRank").textContent=rank();
+ $("finalText").textContent=score>=10?"Analiz, kaynak değerlendirme ve karar verme becerin çok güçlü.":score>=8?"Güçlü sonuç. Temel istihbarat yaklaşımın oldukça iyi.":score>=6?"İyi başlangıç. Kaynak değerlendirme ve analiz üzerinde biraz daha çalışılabilir.":"Temel istihbarat prensiplerini tekrar etmek gerekiyor.";
+}
+render();
+</script>
+</body>
+</html>'''
+
+path = Path("/mnt/data/fbi_intelligence_game.html")
+path.write_text(html, encoding="utf-8")
+print(path)
